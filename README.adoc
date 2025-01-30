@@ -1,0 +1,4 @@
+= Demo WebSocket/SSE bridge
+
+A example of a Weblux server that provides an HTTP Source Event Stream to reverse proxy another web-socket server
+
