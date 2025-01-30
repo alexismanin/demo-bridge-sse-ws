@@ -1,4 +1,23 @@
 = Demo WebSocket/SSE bridge
 
-A example of a Weblux server that provides an HTTP Source Event Stream to reverse proxy another web-socket server
+Example of a Weblux server that provides an HTTP Source Event Stream to reverse proxy another web-socket server.
 
+== Requirements
+
+* JDK 21 or higher
+
+
+== Try it out
+
+. Run all-in-one server (both websocket and SSE proxy):
++
+[source,shell]
+----
+./gradlew bootRun --args='--spring.profiles.active=websocket,sse --bridge.websocket.url=ws://localhost:8080'
+----
+. Trigger SSE
++
+[source,shell]
+----
+curl 'http://localhost:8080/sse/datetime?delay=2s'
+----
