@@ -26,6 +26,7 @@ import kotlin.time.toJavaDuration
 fun BeanDefinitionDsl.configureSSE() = bean {
     router {
         val client = ReactorNettyWebSocketClient()
+        // tag::sink_bridge[]
         GET("/sse/datetime") { request ->
             val delay = request.queryParam("delay")
                 .map { Duration.parse(it) }
@@ -49,7 +50,9 @@ fun BeanDefinitionDsl.configureSSE() = bean {
             ServerResponse.ok().sse()
                 .body(bind(wsConnection, bridge), String::class.java)
         }
+        // end::sink_bridge[]
 
+        // tag::direct_connection[]
         GET("/custom/sse/datetime") { request ->
             val delay = request.queryParam("delay")
                 .map { Duration.parse(it) }
@@ -70,9 +73,15 @@ fun BeanDefinitionDsl.configureSSE() = bean {
             ServerResponse.ok().sse()
                 .body(wsConnection, String::class.java)
         }
+        // end::direct_connection[]
     }
 }
 
+/**
+ * Bind lifecycle of an upstream mono (websocket handler result) with a provided sink that is stream downstream.
+ * This method ensures that if any of the streams ends, the other is cancelled or completed.
+ * @return Sink as a flux, for consumption.
+ */
 private fun <V> bind(upstream: Mono<Void>, downstream: Sinks.Many<V>) : Flux<V> {
     val wsHandle = upstream.subscribe(
         {},
@@ -83,12 +92,10 @@ private fun <V> bind(upstream: Mono<Void>, downstream: Sinks.Many<V>) : Flux<V> 
 }
 
 /**
- * I'd rather have:
- * ```kotlin
- * interface WebSocketHandler<P: Publisher<out Any>> {
- *     fun handle(session: WebSocketSession): P
- * }
- * ```
+ * Example of improved signature for WebSocketHandler.
+ * In this prototype, the handler returns any type of publisher.
+ * Therefore, it would still be possible to return a Mono<Void> to signal disconnection, as it is done now.
+ * And users that want to return the reception flux or any mix of the send and receive flux can also do it.
  */
 fun interface CustomWebSocketHandler<out P: Publisher<out Any>> {
     fun handle(session: WebSocketSession): P
@@ -103,7 +110,7 @@ private fun toHttpHeaders(inbound: WebsocketInbound): org.springframework.http.H
 }
 
 /**
- * TODO; I would rather return P, but I do not find how to do so and still bind websocket session lifecycle to the returned publisher
+ * TODO; I would rather return P, but I do not find how to do so while still binding websocket session lifecycle to the returned publisher
  */
 private fun <V, P: Publisher<out V>> ReactorNettyWebSocketClient.customExecute(url: URI, handler: CustomWebSocketHandler<P>) : Flux<V> {
     val request = httpClient

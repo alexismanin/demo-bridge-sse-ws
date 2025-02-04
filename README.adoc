@@ -1,11 +1,10 @@
 = Demo WebSocket/SSE bridge
 
-Example of a Weblux server that provides an HTTP Source Event Stream to reverse proxy another web-socket server.
+Example of a Webflux server that provides an HTTP Server Sent Event Stream to reverse proxy another web-socket server.
 
 == Requirements
 
 * JDK 21 or higher
-
 
 == Try it out
 
@@ -21,3 +20,25 @@ Example of a Weblux server that provides an HTTP Source Event Stream to reverse 
 ----
 curl 'http://localhost:8080/sse/datetime?delay=2s'
 ----
+
+== Endpoints
+
+For now, both websocket and SSE offer a single endpoint:
+
+* websocket server provides a `/ws/datetime` channel that sends current server date and time each time it receives a `What time is it ?` message.
+* SSE server provides a `/sse/datetime` endpoint to query indefinitely datetime from websocket at fixed delay, and stream back the responses to the client.
+** There's a `/custom/sse/datetime` endpoint that prototypes improvement for datastream proxying (see <<_issues>> section below for details).
+
+== Issues
+
+Webflux websocket session does not offer commodity method to extract websocket data stream outside the handler closure (see https://github.com/spring-projects/spring-framework/issues/25355[spring framework issue #25355]).
+
+This example uses a sink that acts as a channel to pipe websocket ingoing data stream to Server Sent event outgoing data stream.
+The corresponding code is in link:src/main/kotlin/ServerSentEventConf.kt[`/sse/datetime` endpoint configuration,tag=sink_bridge].
+
+An experiment in the same source file tries to craft a prototype to allow WebSocket handler to return an arbitrary flow and therefore, be able to connect directly ingoing websocket message with outgoing events. The poc endpoint is link:src/main/kotlin/ServerSentEventConf.kt[`/custom/sse/datetime` endpoint, tag=direct_connection].
+The code introduced a modified `WebSocketHandler` API (`CustomWebSocketHandler`) that returns any type of reactive stream. Then, a custom WebSocketClient extension use it to return a flux of the elements published by user custom websocket handler.
+
+This is a simple solution to allow current behaviour to be maintained, but extends capabilities for users that want to pipe websocket messages to other components in their applications.
+
+TODO: check what Spring integration does in this regard, compare APIs.
